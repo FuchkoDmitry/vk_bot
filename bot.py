@@ -2,11 +2,10 @@ import os
 from random import randrange
 import vk_api
 from vk_api.longpoll import VkLongPoll, VkEventType
-from vk_api.keyboard import VkKeyboard, VkKeyboardColor
-from data import sex, relation_reverse, relation, sex_reverse, parameters, level_1
+from data import relation_reverse, sex_reverse, parameters
 import re
 
-from db import session, City, Base, engine
+from db import SearchParams, FoundedUsersCount, User
 from vk_user import VkUser
 from keyboards import Keyboards
 
@@ -17,6 +16,7 @@ class VkBot:
     vk_group_session = vk_api.VkApi(token=group_token)
     long_poll = VkLongPoll(vk_group_session)
     search_parameters = {}
+    founded_users = {}
 
     def listen(self):
         '''
@@ -64,13 +64,21 @@ class VkBot:
         name = self.get_fullname(user_id)[0]
         self.write_message(user_id, f'Пока {name}, жаль уходишь:( \nЖми "START" и начнем сначала.'
                                     f'"HELP" для помощи.', keyboard=keyboard)
-        del self.search_parameters[user_id]
+        self.search_parameters.setdefault(user_id, {})
 
     @classmethod
     def get_fullname(cls, user_id):
+        user_in_db = User.check_user(user_id)
+        if user_in_db:
+            first_name = user_in_db.firstname
+            last_name = user_in_db.lastname
+            # print(user_in_db, first_name, last_name)
+            return first_name, last_name
+
         request = cls.vk_group_session.method('users.get', values={'user_ids': user_id})[0]
         first_name = request['first_name']
         last_name = request['last_name']
+        User.add_user(user_id, first_name, last_name)
         return first_name, last_name
 
     def get_age_for_search(self, user_id, keyboard):
@@ -107,15 +115,25 @@ class VkBot:
         name = self.get_fullname(user_id)[0]
         self.write_message(user_id, f'{name} выбирай семейное положение', keyboard=keyboard)
 
+    def make_decision(self, user_id, keyboard):
+        self.write_message(user_id,
+                           'нравится - LIKE, не нравится - DISLIKE, '
+                           'NEXT - смотреть дальше, EXIT - в главное '
+                           'меню или изменить параметры поиска - ',
+                           keyboard=keyboard
+                           )
+
     def check_age(self, user_id, text):
         if int(text[:2]) < 18:
-            self.get_age_for_search(user_id, keyboard.age_choice())
+            self.get_age_for_search(user_id, keyboards.age_choice())
             return False
         else:
             self.set_parameters(user_id, text, 'hometown')
             return True
 
     def set_parameters(self, user_id, text, parameter):
+        self.search_parameters.setdefault(user_id, {})
+        # print(self.search_parameters.setdefault(user_id, {}))
         if re.search(r'^[0-9]{1,3}', text):
             self.search_parameters[user_id]['age_from'] = int(text[:2])
             if len(text) == 2:
@@ -127,53 +145,25 @@ class VkBot:
         else:
             self.search_parameters[user_id][parameter] = parameters[text]
 
+    def show_pictures(self, user_id, user_photos, keyboard):
+        name, surname = self.get_fullname(user_photos[0])
+        self.write_message(
+            user_id,
+            f'Как тебе {name} {surname}?',
+            attachment=user_photos[1],
+            keyboard=keyboard)
 
+    def new_search(self, user_id, keyboard):
+        name = self.get_fullname(user_id)[0]
+        self.write_message(
+            user_id,
+            f'{name}, пользователи закончились',
+            keyboard=keyboard)
+
+
+user = VkUser()
 bot = VkBot()
-keyboard = Keyboards()
+keyboards = Keyboards()
+obj = SearchParams()
+count = FoundedUsersCount()
 age_regex = r'^[0-9]{1,2}-?([0-9]{1,2})?'
-# Base.metadata.create_all(engine)
-flag = 0
-while True:
-    uid, text, payload = bot.listen()
-    print()
-    print('payload=', payload)
-    print('text=', text)
-    if text in level_1 or re.search(age_regex, text) \
-            or session.query(City).where(City.name == text).first() is not None:
-
-        if text in {'мужской', 'женский'}:
-            bot.set_parameters(uid, text, 'sex')
-            bot.get_age_for_search(uid, keyboard.age_choice())
-            print(bot.search_parameters[uid])
-        elif text in relation:
-            bot.set_parameters(uid, text, 'status')
-            bot.city_choice(uid, keyboard.cities_keyboard())
-            print(bot.search_parameters[uid])
-        elif re.search(age_regex, text):
-            is_checked = bot.check_age(uid, text)
-            if is_checked:
-                bot.relation_choice(uid, keyboard.relation_keyboard())
-            print(bot.search_parameters[uid])
-        elif session.query(City).where(City.name == text).first() is not None:
-            bot.set_parameters(uid, text, 'hometown')
-            bot.show_parameters(uid, keyboard.before_searching_keyboard())
-            print(bot.search_parameters[uid])
-        elif text in ('start', 'изменить параметры поиска'):
-            bot.gender_choice(uid, keyboard.gender_keyboard())
-            print(bot.search_parameters.setdefault(uid, {}))
-        elif text == 'exit':
-            bot.say_bye(uid, keyboard.exit_keyboard())
-        else:
-            bot.write_message(uid, f'{uid}, я тебя не понял попробуй еще')
-    else:
-        bot.say_hello(uid, keyboard.start_keyboard())
-
-
-    '''   
-     elif text == 'начать поиск':
-        bot.write_message(uid, 'как тебе?', attachment='photo274665144_457239079,photo90114682_437813800,photo13458042_456239855,photo13458042_410551385,photo65021859_285038362')
-        vk_user = VkUser()
-        print(bot.search_parameters[uid])
-        users = vk_user.find_users(**bot.search_parameters[uid])
-        vk_user.get_photos_for_founded_users(users)
-        '''

@@ -10,7 +10,7 @@ vk_group_session = vk_api.VkApi(token=group_token)
 longpoll = VkLongPoll(vk_group_session)
 
 
-# def write_message(user_id, message='', keyboard=None, attachment=None):
+# def write_message(user_id, message='', keyboards=None, attachment=None):
 def write_message(user_id, message, **kwargs):
     post = {'user_id': user_id,
             'random_id': randrange(10 ** 7),
@@ -20,8 +20,8 @@ def write_message(user_id, message, **kwargs):
     # if message:
     #     post['message'] = message
 
-    # if keyboard:
-    #     post['keyboard'] = keyboard.get_keyboard()
+    # if keyboards:
+    #     post['keyboards'] = keyboards.get_keyboard()
     #
     # if attachment:
     #     post['attachment'] = attachment
@@ -50,7 +50,7 @@ for event in longpoll.listen():
             print('no extra values')
         print('========')
         keyboard = VkKeyboard()
-        # keyboard.add_button('button1', payload="test_flg")
+        # keyboards.add_button('button1', payload="test_flg")
         keyboard.add_button('button_2', payload={"hi": uid})
         keyboard.add_button('button_3', payload={"favorite": uid})
         keyboard.add_button('button_4', payload={"black": uid})
