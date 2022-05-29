@@ -5,9 +5,12 @@ from vk_api.longpoll import VkLongPoll, VkEventType
 from data import relation_reverse, sex_reverse, parameters
 import re
 
-from db import SearchParams, FoundedUsersCount, User
+from db import SearchParams, FoundedUsersCount, User, UserPhotos
 from vk_user import VkUser
 from keyboards import Keyboards
+
+
+
 
 
 class VkBot:
@@ -29,10 +32,11 @@ class VkBot:
             if event.type == VkEventType.MESSAGE_NEW and event.to_me:
                 text = event.text.lower()
                 user_id = event.user_id
-                payload = event.extra_values.get('payload')
-                if payload is not None:
-                    payload = eval(payload)[1]
-                return user_id, text, payload
+                # payload = event.extra_values.get('payload')
+                # if payload is not None:
+                #     payload = eval(payload)[1]
+                # return user_id, text, payload
+                return user_id, text
 
     def write_message(self, user_id, message, attachment=None, **kwargs):
         '''
@@ -65,6 +69,7 @@ class VkBot:
         self.write_message(user_id, f'Пока {name}, жаль уходишь:( \nЖми "START" и начнем сначала.'
                                     f'"HELP" для помощи.', keyboard=keyboard)
         self.search_parameters.setdefault(user_id, {})
+        self.founded_users.setdefault(user_id, [])
 
     @classmethod
     def get_fullname(cls, user_id):
@@ -79,6 +84,20 @@ class VkBot:
         first_name = request['first_name']
         last_name = request['last_name']
         User.add_user(user_id, first_name, last_name)
+        return first_name, last_name
+
+    @classmethod
+    def get_fullname_for_founded_user(cls, founded_user_id):
+        user_in_db = UserPhotos.check_user(founded_user_id[0])
+        if not user_in_db:
+            request = cls.vk_group_session.method('users.get', values={'user_ids': founded_user_id[0]})[0]
+            first_name = request['first_name']
+            last_name = request['last_name']
+            UserPhotos.add_user(founded_user_id, first_name, last_name)
+            return first_name, last_name
+        first_name = user_in_db.firstname
+        last_name = user_in_db.lastname
+        # print(user_in_db, first_name, last_name)
         return first_name, last_name
 
     def get_age_for_search(self, user_id, keyboard):
@@ -146,7 +165,7 @@ class VkBot:
             self.search_parameters[user_id][parameter] = parameters[text]
 
     def show_pictures(self, user_id, user_photos, keyboard):
-        name, surname = self.get_fullname(user_photos[0])
+        name, surname = self.get_fullname_for_founded_user(user_photos)
         self.write_message(
             user_id,
             f'Как тебе {name} {surname}?',
@@ -159,6 +178,13 @@ class VkBot:
             user_id,
             f'{name}, пользователи закончились',
             keyboard=keyboard)
+
+    @classmethod
+    def add_to_db(cls, text, user_id, founded_user_id):
+        if text == 'like':
+            User.add_favorite(user_id, founded_user_id)
+        elif text == 'dislike':
+            User.add_to_blacklist(user_id, founded_user_id)
 
 
 user = VkUser()

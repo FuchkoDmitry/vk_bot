@@ -5,14 +5,15 @@ from data import level_1, relation, level_2
 from db import session, City
 
 
-def bot_logic(users_list=None, search_params_id=None):
+def bot_logic(users_list=None, search_params_id=None, current_user=None):
     while True:
-        uid, text, payload = bot.listen()
+        # uid, text, payload = bot.listen()
+        uid, text = bot.listen()
         if text in level_1 or re.search(age_regex, text) \
                 or session.query(City).where(City.name == text).first() is not None:
             start_logic(text, uid)
         elif text in level_2:
-            advanced_logic(text, uid, users_list, search_params_id)
+            advanced_logic(text, uid, users_list, search_params_id, current_user)
         else:
             bot.say_hello(uid, keyboards.start_keyboard())
 
@@ -40,9 +41,9 @@ def start_logic(text, uid):
         bot.write_message(uid, f'{uid}, я тебя не понял попробуй еще')
 
 
-def advanced_logic(text, uid, users_list, search_params_id):
+def advanced_logic(text, uid, users_list, search_params_id, current_user):
     if text == 'найти':
-        search_params_id = obj.add_search_params(user_id=uid, params=str(bot.search_parameters[uid]))
+        search_params_id = obj.add_search_params(user_id=uid, params=str(bot.search_parameters.setdefault(uid, {})))
         offset = count.check_count(uid, search_params_id)
         bot.founded_users[uid] = user.find_users(search_params_id, offset=offset, **bot.search_parameters[uid])
         if not bot.founded_users[uid]:
@@ -51,8 +52,9 @@ def advanced_logic(text, uid, users_list, search_params_id):
         user_photos = user.get_photos_for_founded_user(bot.founded_users[uid].pop(0))
         bot.show_pictures(uid, user_photos, keyboards.user_link_keyboard(user_photos[0]))
         bot.make_decision(uid, keyboards.decision_keyboard())
-        return bot_logic(bot.founded_users[uid], search_params_id)
+        return bot_logic(bot.founded_users[uid], search_params_id, user_photos[0])
     elif text in ('like', 'dislike', 'next'):
+        bot.add_to_db(text, uid, current_user)
         try:
             user_photos = user.get_photos_for_founded_user(bot.founded_users[uid].pop(0))
             bot.show_pictures(uid, user_photos, keyboards.user_link_keyboard(user_photos[0]))
@@ -67,7 +69,7 @@ def advanced_logic(text, uid, users_list, search_params_id):
             bot.show_pictures(uid, user_photos, keyboards.user_link_keyboard(user_photos[0]))
             bot.make_decision(uid, keyboards.decision_keyboard())
         finally:
-            return bot_logic(bot.founded_users[uid], search_params_id)
+            return bot_logic(bot.founded_users[uid], search_params_id, user_photos[0])
 
 
 if __name__ == '__main__':

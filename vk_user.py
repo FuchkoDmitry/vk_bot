@@ -64,5 +64,5 @@ class VkUser:
             user_photos[1].sort(key=lambda x: (x[0], x[1]), reverse=True)
             user_photos[1] = user_photos[1][:3]
         user_photos[1] = ','.join([photo[1] for photo in user_photos[1]])
-        UserPhotos.add_user(user_photos)
+        # UserPhotos.add_user(user_photos)
         return user_photos

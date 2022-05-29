@@ -4,7 +4,6 @@ from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy import and_
 import os
 
-
 Base = declarative_base()
 db_login = os.getenv('db_login')
 db_password = os.getenv('db_password')
@@ -15,7 +14,7 @@ db = f'postgresql://{db_login}:{db_password}@localhost:5432/{db_name}'
 engine = sq.create_engine(db)
 Session = sessionmaker(bind=engine)
 session = Session()
-Base.metadata.create_all(engine)
+# Base.metadata.create_all(engine)
 
 
 class User(Base):
@@ -26,6 +25,8 @@ class User(Base):
     firstname = sq.Column(sq.String)
     lastname = sq.Column(sq.String)
     search_params_list = relationship('SearchParams', back_populates='user')
+    favorites = relationship('UserPhotos', secondary='user_to_favorites')
+    blacklisted = relationship('UserPhotos', secondary='user_to_blacklisted')
 
     @classmethod
     def check_user(cls, user_id):
@@ -45,6 +46,75 @@ class User(Base):
         )
         session.add(new_user)
         session.commit()
+
+    @classmethod
+    def add_favorite(cls, user_id, fav_user_id):
+        user = cls.check_user(user_id)
+        fav_user = session.query(UserPhotos).where(
+            UserPhotos.user_id == fav_user_id
+        ).first()
+        user.favorites.append(fav_user)
+        session.commit()
+
+    @classmethod
+    def add_to_blacklist(cls, user_id, bl_user_id):
+        user = cls.check_user(user_id)
+        bl_user = session.query(UserPhotos).where(
+            UserPhotos.user_id == bl_user_id
+        ).first()
+        user.blacklisted.append(bl_user)
+        session.commit()
+
+
+user_to_favorites = sq.Table('user_to_favorites', Base.metadata,
+                             sq.Column('user_id', sq.Integer, sq.ForeignKey('user.user_id')),
+                             sq.Column('fav_user_id', sq.Integer, sq.ForeignKey('user_photos.user_id'))
+                             )
+
+user_to_blacklisted = sq.Table('user_to_blacklisted', Base.metadata,
+                               sq.Column('user_id', sq.Integer, sq.ForeignKey('user.user_id')),
+                               sq.Column('bl_user_id', sq.Integer, sq.ForeignKey('user_photos.user_id'))
+                               )
+
+
+class UserPhotos(Base):
+
+    __tablename__ = 'user_photos'
+
+    user_id = sq.Column(
+        sq.Integer,
+        primary_key=True
+    )
+    firstname = sq.Column(sq.String)
+    lastname = sq.Column(sq.String)
+    user_photos = sq.Column(sq.Text)
+    in_favorites = relationship(User, secondary='user_to_favorites', viewonly=True)
+    in_blacklists = relationship(User, secondary='user_to_blacklisted', viewonly=True)
+
+    @classmethod
+    def check_user(cls, user_id):
+        user = session.query(cls).where(
+            cls.user_id == user_id
+        ).first()
+        if user is not None:
+            return user
+        return False
+
+    @classmethod
+    def add_user(cls, user_photos, firstname, lastname):
+        # firstname, lastname = bot.get_fullname_for_founded_user(user_photos[0])
+        print(user_photos)
+        print(firstname)
+        print(lastname)
+        new_user = UserPhotos(
+            user_id=user_photos[0],
+            user_photos=user_photos[1],
+            firstname=firstname,
+            lastname=lastname
+        )
+        session.add(new_user)
+        session.commit()
+        # print('user' + str(user_photos[0]) + 'added to db with photos' + user_photos[1])
 
 
 class SearchParams(Base):
@@ -125,41 +195,6 @@ class FoundedUsersCount(Base):
                 searching_param.founded_users_count = 0
                 session.add(searching_param)
                 session.commit()
-        # print(request.founded_users_count)
-        # request.founded_users_count = 0
-        # print(request.founded_users_count)
-        # session.add(request)
-        # session.commit()
-
-
-class UserPhotos(Base):
-
-    __tablename__ = 'user_photos'
-
-    user_id = sq.Column(
-        sq.Integer,
-        primary_key=True
-    )
-    user_photos = sq.Column(sq.Text)
-
-    @classmethod
-    def check_user(cls, user_id):
-        user = session.query(cls).where(
-            cls.user_id == user_id
-        ).first()
-        if user is not None:
-            return user
-        return False
-
-    @classmethod
-    def add_user(cls, user_photos):
-        new_user = UserPhotos(
-            user_id=user_photos[0],
-            user_photos=user_photos[1]
-        )
-        session.add(new_user)
-        session.commit()
-        # print('user' + str(user_photos[0]) + 'added to db with photos' + user_photos[1])
 
 
 class City(Base):
@@ -170,30 +205,5 @@ class City(Base):
     name = sq.Column(sq.String)
 
 
-class Favorites(Base):
-
-    __tablename__ = 'favorites'
-
-    user_id = sq.Column(sq.Integer, primary_key=True)
-    favorite_id = sq.Column(sq.Integer, primary_key=True)
-    photos_list = sq.Column(sq.Text)
-
-
-class BlackList(Base):
-
-    __tablename__ = 'black_list'
-
-    user_id = sq.Column(sq.Integer, primary_key=True)
-    blacklisted_user_id = sq.Column(sq.Integer, primary_key=True)
-    photos_list = sq.Column(sq.Text)
-
-
-
 Base.metadata.create_all(engine)
 
-# request = session.query(SearchParams).where(SearchParams.user_id==1136869).all()
-# for el in request:
-#     print(el.search_parameters, el.id)
-#
-# request = session.query(FoundedUsersCount).where(FoundedUsersCount.searching_parameters_id==7).first()
-# print(request.searching_parameters_id, request.founded_users_count, request.user_id)
