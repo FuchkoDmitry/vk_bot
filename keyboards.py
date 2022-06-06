@@ -24,7 +24,20 @@ class Keyboards:
     def exit_keyboard(cls):
         keyboard = VkKeyboard(one_time=True)
         keyboard.add_button('START', 'positive')
-        keyboard.add_button('HELP', 'secondary')
+        keyboard.add_button('MENU', 'secondary')
+        return keyboard.get_keyboard()
+
+    @classmethod
+    def menu_keyboard(cls):
+        keyboard = VkKeyboard(one_time=True)
+        keyboard.add_button('START', 'positive')
+        keyboard.add_button('EXIT', 'negative')
+        keyboard.add_line()
+        keyboard.add_button('ПРОСМОТРЕТЬ ПАРАМЕТРЫ ПОИСКА', 'primary')
+        keyboard.add_button('ИЗМЕНИТЬ ПАРАМЕТРЫ ПОИСКА', 'primary')
+        keyboard.add_line()
+        keyboard.add_button('ИЗБРАННОЕ', 'primary')
+        keyboard.add_button('ЧЕРНЫЙ СПИСОК', 'primary')
         return keyboard.get_keyboard()
 
     @classmethod
@@ -76,11 +89,11 @@ class Keyboards:
     @classmethod
     def decision_keyboard(cls):
         keyboard = VkKeyboard(one_time=True)
-        keyboard.add_button('like', 'positive')
-        keyboard.add_button('dislike', 'negative')
+        keyboard.add_button('LIKE', 'positive')
+        keyboard.add_button('DISLIKE', 'negative')
         keyboard.add_line()
-        keyboard.add_button('next', 'primary')
-        keyboard.add_button('exit', 'negative')
+        keyboard.add_button('NEXT', 'primary')
+        keyboard.add_button('EXIT', 'negative')
         keyboard.add_line()
         keyboard.add_button('изменить параметры поиска', 'primary')
         return keyboard.get_keyboard()
@@ -90,7 +103,27 @@ class Keyboards:
         keyboard = VkKeyboard(one_time=True)
         keyboard.add_button('изменить параметры поиска', 'primary')
         keyboard.add_line()
-        keyboard.add_button('exit', 'negative')
+        keyboard.add_button('EXIT', 'negative')
         keyboard.add_line()
-        keyboard.add_button('menu')
+        keyboard.add_button('MENU')
+        return keyboard.get_keyboard()
+
+    @classmethod
+    def work_with_fav_keyboard(cls):
+        keyboard = VkKeyboard(one_time=True)
+        keyboard.add_button('ДАЛЕЕ', 'positive')
+        keyboard.add_button('УДАЛИТЬ', 'negative')
+        keyboard.add_line()
+        keyboard.add_button('MENU')
+        keyboard.add_button('START')
+        return keyboard.get_keyboard()
+
+    @classmethod
+    def work_with_bl_keyboard(cls):
+        keyboard = VkKeyboard(one_time=True)
+        keyboard.add_button('СЛЕДУЮЩИЙ', 'positive')
+        keyboard.add_button('УДАЛИТЬ ИЗ ЧС', 'negative')
+        keyboard.add_line()
+        keyboard.add_button('MENU')
+        keyboard.add_button('START')
         return keyboard.get_keyboard()

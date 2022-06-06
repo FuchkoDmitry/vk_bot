@@ -1,3 +1,5 @@
+from sys import getsizeof
+
 import sqlalchemy as sq
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
@@ -25,11 +27,11 @@ class User(Base):
     firstname = sq.Column(sq.String)
     lastname = sq.Column(sq.String)
     search_params_list = relationship('SearchParams', back_populates='user')
-    favorites = relationship('UserPhotos', secondary='user_to_favorites')
-    blacklisted = relationship('UserPhotos', secondary='user_to_blacklisted')
+    favorites = relationship('FoundedUser', secondary='user_to_favorites')
+    blacklisted = relationship('FoundedUser', secondary='user_to_blacklisted')
 
     @classmethod
-    def check_user(cls, user_id):
+    def get_user(cls, user_id):
         request = session.query(cls).where(
             cls.user_id == user_id
         ).first()
@@ -49,20 +51,43 @@ class User(Base):
 
     @classmethod
     def add_favorite(cls, user_id, fav_user_id):
-        user = cls.check_user(user_id)
-        fav_user = session.query(UserPhotos).where(
-            UserPhotos.user_id == fav_user_id
+        user = cls.get_user(user_id)
+        fav_user = session.query(FoundedUser).where(
+            FoundedUser.user_id == fav_user_id
         ).first()
         user.favorites.append(fav_user)
         session.commit()
 
     @classmethod
     def add_to_blacklist(cls, user_id, bl_user_id):
-        user = cls.check_user(user_id)
-        bl_user = session.query(UserPhotos).where(
-            UserPhotos.user_id == bl_user_id
+        user = cls.get_user(user_id)
+        bl_user = session.query(FoundedUser).where(
+            FoundedUser.user_id == bl_user_id
         ).first()
         user.blacklisted.append(bl_user)
+        session.commit()
+
+    @classmethod
+    def get_favorites(cls, user_id):
+        user = cls.get_user(user_id)
+        # print(user.favorites)
+        return user.favorites
+
+    @classmethod
+    def delete_from_favorites(cls, user_id, user_to_delete):
+        user = cls.get_user(user_id)
+        user.favorites.remove(user_to_delete)
+        session.commit()
+
+    @classmethod
+    def get_blacklisted(cls, user_id):
+        user = cls.get_user(user_id)
+        return user.blacklisted
+
+    @classmethod
+    def delete_from_blacklist(cls, user_id, user_to_delete):
+        user = cls.get_user(user_id)
+        user.blacklisted.remove(user_to_delete)
         session.commit()
 
 
@@ -77,7 +102,7 @@ user_to_blacklisted = sq.Table('user_to_blacklisted', Base.metadata,
                                )
 
 
-class UserPhotos(Base):
+class FoundedUser(Base):
 
     __tablename__ = 'user_photos'
 
@@ -92,7 +117,7 @@ class UserPhotos(Base):
     in_blacklists = relationship(User, secondary='user_to_blacklisted', viewonly=True)
 
     @classmethod
-    def check_user(cls, user_id):
+    def get_user(cls, user_id):
         user = session.query(cls).where(
             cls.user_id == user_id
         ).first()
@@ -102,11 +127,7 @@ class UserPhotos(Base):
 
     @classmethod
     def add_user(cls, user_photos, firstname, lastname):
-        # firstname, lastname = bot.get_fullname_for_founded_user(user_photos[0])
-        print(user_photos)
-        print(firstname)
-        print(lastname)
-        new_user = UserPhotos(
+        new_user = FoundedUser(
             user_id=user_photos[0],
             user_photos=user_photos[1],
             firstname=firstname,
@@ -114,7 +135,6 @@ class UserPhotos(Base):
         )
         session.add(new_user)
         session.commit()
-        # print('user' + str(user_photos[0]) + 'added to db with photos' + user_photos[1])
 
 
 class SearchParams(Base):
@@ -207,3 +227,29 @@ class City(Base):
 
 Base.metadata.create_all(engine)
 
+# print(FoundedUser.get_user(211974) in User.get_user(1136869).blacklisted)
+# print(True in User.get_user(1136869).blacklisted)
+# fav = session.query(User).where(User.user_id==1136869).first()
+# print(fav.search_params_list)
+# for sp in fav.favorites:
+#     print(sp.user_photos, sp.user_id)
+
+# fuc = session.query(FoundedUsersCount).all()
+# for f in fuc:
+#     print(f.searching_parameters_id, f.user_id, f.founded_users_count)
+# print(fuc)
+# print(211975 in [user.user_id for user in fav.blacklisted])
+# for user in fav.blacklisted:
+#     print(user.user_id)
+# user_to_del = fav.favorites[0]
+# fav.favorites.remove(user_to_del)
+# print(fav.favorites)
+# iterator = iter(fav.favorites)
+# print(getsizeof(iterator))
+# print(getsizeof(fav.favorites))
+# it = iter(fav.blacklisted)
+# print(getsizeof(it))
+# print(getsizeof(fav.blacklisted))
+# print(next(iterator).firstname)
+# print(next(iterator).firstname)
+# print(next(iterator).firstname)

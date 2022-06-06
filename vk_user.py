@@ -1,7 +1,7 @@
 import vk_api
 import os
 from vk_api.tools import VkTools
-from db import UserPhotos, FoundedUsersCount
+from db import FoundedUser, FoundedUsersCount, User
 
 
 class VkUser:
@@ -10,7 +10,7 @@ class VkUser:
     vk_user_session = vk_api.VkApi(token=user_token)
     tools = VkTools(vk_user_session)
 
-    def find_users(self, params_id, offset=0, count=10, **parameters):
+    def find_users(self, user_id, params_id, offset=0, count=10, **parameters):
         '''
         находим пользователей по параметрам, переданным
         пользователем в **parameters. Обновляем количество
@@ -18,6 +18,7 @@ class VkUser:
         для передачи в offset
         '''
         users_list = []
+        print(offset)
         params = {'sort': 0,
                   'has_photo': 1,
                   'is_closed': False,
@@ -27,7 +28,8 @@ class VkUser:
                   }
         users = self.vk_user_session.method('users.search', values={**params, **parameters})
         for user in users['items']:
-            if user['is_closed']:
+            if user['is_closed'] or \
+                    FoundedUser.get_user(user['id']) in User.get_user(user_id).blacklisted:
                 continue
             users_list.append(user['id'])
         FoundedUsersCount.update_count(params_id, count)
@@ -44,7 +46,7 @@ class VkUser:
         :param user_id:
         :return:
         '''
-        user_in_db = UserPhotos.check_user(user_id)
+        user_in_db = FoundedUser.get_user(user_id)
         if user_in_db:
             user_photos = [user_in_db.user_id, user_in_db.user_photos]
             return user_photos
@@ -64,5 +66,5 @@ class VkUser:
             user_photos[1].sort(key=lambda x: (x[0], x[1]), reverse=True)
             user_photos[1] = user_photos[1][:3]
         user_photos[1] = ','.join([photo[1] for photo in user_photos[1]])
-        # UserPhotos.add_user(user_photos)
+        # FoundedUser.add_user(user_photos)
         return user_photos

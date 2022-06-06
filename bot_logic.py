@@ -14,6 +14,31 @@ def bot_logic(users_list=None, search_params_id=None, current_user=None):
             start_logic(text, uid)
         elif text in level_2:
             advanced_logic(text, uid, users_list, search_params_id, current_user)
+        elif text in ('избранное', 'далее', 'удалить'):
+            fav_user = bot.get_user_in_favorites(uid, text, current_user)
+            if not fav_user:
+                bot.new_search(uid, keyboards.start_keyboard())
+                return bot_logic()
+            bot.show_pictures(
+                uid,
+                [fav_user.user_id, fav_user.user_photos],
+                keyboards.user_link_keyboard(fav_user.user_id)
+            )
+            bot.make_decision_for_favorites(uid, keyboards.work_with_fav_keyboard())
+            bot_logic(current_user=fav_user)
+
+        elif text in ('черный список', 'следующий', 'удалить из чс'):
+            bl_user = bot.get_user_in_blacklist(uid, text, current_user)
+            if not bl_user:
+                bot.new_search(uid, keyboards.start_keyboard())
+                return bot_logic()
+            bot.show_pictures(uid,
+                              [bl_user.user_id, bl_user.user_photos],
+                              keyboards.user_link_keyboard(bl_user.user_id)
+                              )
+            bot.make_decision_for_blacklist(uid, keyboards.work_with_bl_keyboard())
+            bot_logic(current_user=bl_user)
+
         else:
             bot.say_hello(uid, keyboards.start_keyboard())
 
@@ -37,6 +62,10 @@ def start_logic(text, uid):
     elif text == 'exit':
         bot.say_bye(uid, keyboards.exit_keyboard())
         count.clear_count(uid)
+    elif text == 'menu':
+        bot.show_menu(uid, keyboards.menu_keyboard())
+    elif text == 'просмотреть параметры поиска':
+        bot.show_parameters(uid, keyboards.before_searching_keyboard())
     else:
         bot.write_message(uid, f'{uid}, я тебя не понял попробуй еще')
 
@@ -45,7 +74,7 @@ def advanced_logic(text, uid, users_list, search_params_id, current_user):
     if text == 'найти':
         search_params_id = obj.add_search_params(user_id=uid, params=str(bot.search_parameters.setdefault(uid, {})))
         offset = count.check_count(uid, search_params_id)
-        bot.founded_users[uid] = user.find_users(search_params_id, offset=offset, **bot.search_parameters[uid])
+        bot.founded_users[uid] = user.find_users(uid, search_params_id, offset=offset, **bot.search_parameters[uid])
         if not bot.founded_users[uid]:
             bot.new_search(uid, keyboards.new_search_keyboard())
             return bot_logic()
@@ -59,9 +88,10 @@ def advanced_logic(text, uid, users_list, search_params_id, current_user):
             user_photos = user.get_photos_for_founded_user(bot.founded_users[uid].pop(0))
             bot.show_pictures(uid, user_photos, keyboards.user_link_keyboard(user_photos[0]))
             bot.make_decision(uid, keyboards.decision_keyboard())
+            print('bot.founded_users[uid]', bot.founded_users[uid])
         except IndexError:
             offset = count.check_count(uid, search_params_id)
-            bot.founded_users[uid] = user.find_users(search_params_id, offset=offset, **bot.search_parameters[uid])
+            bot.founded_users[uid] = user.find_users(uid, search_params_id, offset=offset, **bot.search_parameters[uid])
             if not bot.founded_users[uid]:
                 bot.new_search(uid, keyboards.new_search_keyboard())
                 return bot_logic()
