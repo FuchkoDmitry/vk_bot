@@ -75,7 +75,8 @@ class VkBot:
 
     def show_menu(self, user_id, keyboard):
         self.write_message(user_id,
-                           'START - начать новый поиск. EXIT - выйти.'
+                           'START - начать новый поиск. EXIT - выйти. '
+                           'CONTINUE - продолжить просмотр.'
                            'ПРОСМОТРЕТЬ ПАРАМЕТРЫ ПОИСКА - посмотреть свои '
                            'текущие параметры поиска. ИЗБРАННОЕ - '
                            'посмотреть пользователей, которых ты "лайкнул". '
@@ -209,15 +210,29 @@ class VkBot:
             keyboard=keyboard)
 
     # @classmethod
-    def add_to_db(self, text, user_id, founded_user_id):
+    def add_to_db_and_check_matched(self, text, user_id, founded_user_id):
         if text == 'like':
+            user = User.get_user(user_id)
             fav_user = FoundedUser.get_user(founded_user_id)
-            if fav_user in User.get_user(user_id).favorites:
+            if fav_user in user.favorites:
                 self.write_message(user_id, 'Пользователь уже в вашем избранном')
                 return False
+            # elif User.get_user(founded_user_id):
             User.add_favorite(user_id, founded_user_id)
+            fav_user = User.get_user(founded_user_id)
+            if fav_user:
+                return User.is_matched(user, fav_user)
         elif text == 'dislike':
             User.add_to_blacklist(user_id, founded_user_id)
+
+    def messages_to_matched_users(self, user, matched_user):
+        self.write_message(user.user_id, f'{matched_user.lastname} {matched_user.firstname} '
+                                         f'тоже лайкнул(а) тебя. Договориться о встрече или '
+                                         f'продолжить просмотр?',
+                           keyboard=keyboards.write_message_to_fav_user(matched_user.user_id))
+        self.write_message(matched_user.user_id, f'{user.lastname} {user.firstname} '
+                                                 f'тоже лайкнул тебя. Договоришься встретиться?',
+                           keyboard=keyboards.message_to_pair(user.user_id))
 
     def get_user_in_favorites(self, user_id, text, current_user=None):
         if text == 'удалить' and current_user is not None:

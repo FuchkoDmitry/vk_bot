@@ -90,6 +90,12 @@ class User(Base):
         user.blacklisted.remove(user_to_delete)
         session.commit()
 
+    @classmethod
+    def is_matched(cls, user_obj, fav_user_obj):
+        if user_obj in fav_user_obj.favorites:
+            return user_obj, fav_user_obj
+        return False
+
 
 user_to_favorites = sq.Table('user_to_favorites', Base.metadata,
                              sq.Column('user_id', sq.Integer, sq.ForeignKey('user.user_id')),
@@ -230,7 +236,8 @@ Base.metadata.create_all(engine)
 # print(FoundedUser.get_user(211974) in User.get_user(1136869).blacklisted)
 # print(True in User.get_user(1136869).blacklisted)
 # fav = session.query(User).where(User.user_id==1136869).first()
-# print(fav.search_params_list)
+# fav2 = session.query(User).where(User.user_id==288362979).first()
+# print(fav2.favorites)
 # for sp in fav.favorites:
 #     print(sp.user_photos, sp.user_id)
 

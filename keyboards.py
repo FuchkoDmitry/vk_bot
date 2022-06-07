@@ -80,10 +80,29 @@ class Keyboards:
         keyboard.add_button('в активном поиске', 'positive')
         return keyboard.get_keyboard()
 
-    def user_link_keyboard(self, user_id):
+    @classmethod
+    def user_link_keyboard(cls, user_id):
         user_link = f'https://vk.com/id{user_id}'
         keyboard = VkKeyboard(one_time=False, inline=True)
         keyboard.add_openlink_button('Перейти на страницу пользователя', user_link)
+        return keyboard.get_keyboard()
+
+    @classmethod
+    def write_message_to_fav_user(cls, user_id):
+        messenger_link = f'https://vk.com/im?sel={user_id}'
+        keyboard = VkKeyboard(one_time=True)
+        keyboard.add_openlink_button('НАПИСАТЬ', messenger_link)
+        keyboard.add_button('NEXT')
+        keyboard.add_line()
+        keyboard.add_button('MENU')
+        keyboard.add_button('EXIT', 'negative')
+        return keyboard.get_keyboard()
+
+    @classmethod
+    def message_to_pair(cls, user_id):
+        messenger_link = f'https://vk.com/im?sel={user_id}'
+        keyboard = VkKeyboard(inline=True)
+        keyboard.add_openlink_button('НАПИСАТЬ', messenger_link)
         return keyboard.get_keyboard()
 
     @classmethod
