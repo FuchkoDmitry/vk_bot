@@ -1,4 +1,4 @@
-from vk_api.keyboard import VkKeyboard, VkKeyboardColor
+from vk_api.keyboard import VkKeyboard
 
 
 class Keyboards:
@@ -16,7 +16,6 @@ class Keyboards:
     def start_keyboard(cls):
         keyboard = VkKeyboard(one_time=True)
         keyboard.add_button('START', 'positive')
-        keyboard.add_button('EXIT', 'negative')
         keyboard.add_button('MENU', 'primary')
         return keyboard.get_keyboard()
 
@@ -33,8 +32,8 @@ class Keyboards:
         keyboard.add_button('START', 'positive')
         keyboard.add_button('EXIT', 'negative')
         keyboard.add_line()
-        keyboard.add_button('ПРОСМОТРЕТЬ ПАРАМЕТРЫ ПОИСКА', 'primary')
-        keyboard.add_button('ИЗМЕНИТЬ ПАРАМЕТРЫ ПОИСКА', 'primary')
+        keyboard.add_button('ПРОСМОТР ПАРАМЕТРОВ', 'primary')
+        keyboard.add_button('ИЗМЕНИТЬ ПАРАМЕТРЫ', 'primary')
         keyboard.add_line()
         keyboard.add_button('ИЗБРАННОЕ', 'primary')
         keyboard.add_button('ЧЕРНЫЙ СПИСОК', 'primary')
@@ -52,7 +51,7 @@ class Keyboards:
         keyboard = VkKeyboard(one_time=True)
         keyboard.add_button('НАЙТИ', 'positive')
         keyboard.add_line()
-        keyboard.add_button('ИЗМЕНИТЬ ПАРАМЕТРЫ ПОИСКА', 'primary')
+        keyboard.add_button('ИЗМЕНИТЬ ПАРАМЕТРЫ', 'primary')
         keyboard.add_line()
         keyboard.add_button('EXIT', 'negative')
         return keyboard.get_keyboard()
@@ -114,13 +113,13 @@ class Keyboards:
         keyboard.add_button('NEXT', 'primary')
         keyboard.add_button('EXIT', 'negative')
         keyboard.add_line()
-        keyboard.add_button('изменить параметры поиска', 'primary')
+        keyboard.add_button('изменить параметры', 'primary')
         return keyboard.get_keyboard()
 
     @classmethod
     def new_search_keyboard(cls):
         keyboard = VkKeyboard(one_time=True)
-        keyboard.add_button('изменить параметры поиска', 'primary')
+        keyboard.add_button('изменить параметры', 'primary')
         keyboard.add_line()
         keyboard.add_button('EXIT', 'negative')
         keyboard.add_line()

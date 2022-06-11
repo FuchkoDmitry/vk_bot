@@ -1,15 +1,14 @@
-from sys import getsizeof
 
 import sqlalchemy as sq
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy import and_
-import os
+from decouple import config
 
 Base = declarative_base()
-db_login = os.getenv('db_login')
-db_password = os.getenv('db_password')
-db_name = os.getenv('db_name')
+db_login = config('DB_LOGIN')
+db_password = config('DB_PASSWORD')
+db_name = config('DB_NAME')
 
 
 db = f'postgresql://{db_login}:{db_password}@localhost:5432/{db_name}'
@@ -32,12 +31,12 @@ class User(Base):
 
     @classmethod
     def get_user(cls, user_id):
-        request = session.query(cls).where(
+        user = session.query(cls).where(
             cls.user_id == user_id
         ).first()
-        if request is None:
+        if user is None:
             return False
-        return request
+        return user
 
     @classmethod
     def add_user(cls, user_id, first_name, last_name):
@@ -70,7 +69,6 @@ class User(Base):
     @classmethod
     def get_favorites(cls, user_id):
         user = cls.get_user(user_id)
-        # print(user.favorites)
         return user.favorites
 
     @classmethod
@@ -167,10 +165,8 @@ class SearchParams(Base):
             self.search_parameters = params
             session.add(self)
             session.commit()
-            # print('параметры добавлены в бд params-->', self.search_parameters)
             return self.id
         else:
-            # print('параметры были в бд' + request.search_parameters)
             return request.id
 
 
@@ -184,10 +180,8 @@ class FoundedUsersCount(Base):
                                         )
     user_id = sq.Column(sq.Integer)
     founded_users_count = sq.Column(sq.Integer)
-    # user_photos = sq.Column(sq.Text)
 
     def check_count(self, user_id, search_params_id):
-        # print('search_params_id', search_params_id)
         request = session.query(FoundedUsersCount).where(and_(
             FoundedUsersCount.user_id == user_id,
             FoundedUsersCount.searching_parameters_id == search_params_id)
@@ -212,9 +206,6 @@ class FoundedUsersCount(Base):
             {'founded_users_count': count_to_add + current_count}
         )
         session.commit()
-        current_count = session.query(cls).where(
-            cls.searching_parameters_id == search_params_id
-        ).first().founded_users_count
 
     @classmethod
     def clear_count(cls, user_id):
@@ -237,40 +228,3 @@ class City(Base):
 
 
 Base.metadata.create_all(engine)
-
-# User.add_favorite(123398, 1136869)
-# a = session.query(User).all()
-# for u in a:
-#     print(u.favorites)
-# print(FoundedUser.get_user(211974) in User.get_user(1136869).blacklisted)
-# print(True in User.get_user(1136869).blacklisted)
-# fav = session.query(User).where(User.user_id==1136869).first()
-# fav2 = session.query(User).where(User.user_id==288362979).first()
-# print(fav2.favorites)
-# for sp in fav.favorites:
-#     print(sp.user_photos, sp.user_id)
-
-# fuc = session.query(FoundedUsersCount).all()
-# for f in fuc:
-#     print(f.searching_parameters_id, f.user_id, f.founded_users_count)
-# print(fuc)
-# print(211975 in [user.user_id for user in fav.blacklisted])
-# for user in fav.blacklisted:
-#     print(user.user_id)
-# user_to_del = session.query(FoundedUser).where(FoundedUser.user_id==123398).first()
-# User.delete_from_favorites(1136869, user_to_del)
-
-# print(user_to_del.firstname, user_to_del.lastname)
-# fav.favorites.remove(user_to_del)
-# for user in fav.favorites:
-#     print(user.lastname, user.firstname)
-# print(fav.favorites)
-# iterator = iter(fav.favorites)
-# print(getsizeof(iterator))
-# print(getsizeof(fav.favorites))
-# it = iter(fav.blacklisted)
-# print(getsizeof(it))
-# print(getsizeof(fav.blacklisted))
-# print(next(iterator).firstname)
-# print(next(iterator).firstname)
-# print(next(iterator).firstname)

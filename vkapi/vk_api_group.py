@@ -1,21 +1,16 @@
-import os
+from decouple import config
 from random import randrange
 import vk_api
 from vk_api.longpoll import VkLongPoll, VkEventType
-from data import relation_reverse, sex_reverse, parameters
+from vk_bot.data import relation_reverse, sex_reverse, parameters
 import re
-
-from db import SearchParams, FoundedUsersCount, User, FoundedUser
-from vk_user import VkUser
-from keyboards import Keyboards
-
-
-
+from database.db_classes import User, FoundedUser
+from vk_bot.keyboards import Keyboards
 
 
 class VkBot:
 
-    group_token = os.getenv('GROUP_TOKEN')
+    group_token = config('GROUP_TOKEN')
     vk_group_session = vk_api.VkApi(token=group_token)
     long_poll = VkLongPoll(vk_group_session)
     search_parameters = {}
@@ -24,31 +19,13 @@ class VkBot:
     blacklist_users = {}
 
     def listen(self):
-        '''
-        бот слушает сервер. при получении сообщения,
-        и возвращает user_id и текст сообщения. Если
-        была передана payload информация, преобразует её
-        в словарь и передает её вместо текста сообщения.
-        '''
         for event in self.long_poll.listen():
             if event.type == VkEventType.MESSAGE_NEW and event.to_me:
                 text = event.text.lower()
                 user_id = event.user_id
-                # payload = event.extra_values.get('payload')
-                # if payload is not None:
-                #     payload = eval(payload)[1]
-                # return user_id, text, payload
                 return user_id, text
 
     def write_message(self, user_id, message, attachment=None, **kwargs):
-        '''
-        написать сообщение пользователю
-        :param user_id: id пользователя
-        :param message: текст сообщения
-        :param attachment: вложение(опционально)
-        :param kwargs:
-        :return:
-        '''
         post = {'user_id': user_id,
                 'random_id': randrange(10 ** 7),
                 'message': message
@@ -62,9 +39,9 @@ class VkBot:
     def say_hello(self, user_id, keyboard):
 
         name, surname = self.get_fullname(user_id)
-        self.write_message(user_id, f'Привет {name} {surname}, я бот, который поможет тебе'
-                                    'найти пару. Жми START, чтобы начать, EXIT'
-                                    ' для выхода, MENU - посмотреть меню', keyboard=keyboard)
+        self.write_message(user_id, f'Привет {name} {surname}, я бот, который поможет тебе '
+                                    'найти пару. Жми START, чтобы начать новый поиск,'
+                                    ' MENU - посмотреть меню', keyboard=keyboard)
 
     def say_bye(self, user_id, keyboard):
         name = self.get_fullname(user_id)[0]
@@ -76,9 +53,9 @@ class VkBot:
     def show_menu(self, user_id, keyboard):
         self.write_message(user_id,
                            'START - начать новый поиск. EXIT - выйти. '
-                           'CONTINUE - продолжить просмотр.'
-                           'ПРОСМОТРЕТЬ ПАРАМЕТРЫ ПОИСКА - посмотреть свои '
-                           'текущие параметры поиска. ИЗБРАННОЕ - '
+                           'ПРОСМОТР ПАРАМЕТРОВ - посмотреть свои '
+                           'текущие параметры поиска. ИЗМЕНИТЬ ПАРАМЕТРЫ - '
+                           'изменить параметры поиска. ИЗБРАННОЕ - '
                            'посмотреть пользователей, которых ты "лайкнул". '
                            'ЧЕРНЫЙ СПИСОК - посмотреть кому ты поставил "дизлайк".',
                            keyboard=keyboard)
@@ -89,7 +66,6 @@ class VkBot:
         if user_in_db:
             first_name = user_in_db.firstname
             last_name = user_in_db.lastname
-            # print(user_in_db, first_name, last_name)
             return first_name, last_name
 
         request = cls.vk_group_session.method('users.get', values={'user_ids': user_id})[0]
@@ -109,15 +85,15 @@ class VkBot:
             return first_name, last_name
         first_name = user_in_db.firstname
         last_name = user_in_db.lastname
-        # print(user_in_db, first_name, last_name)
         return first_name, last_name
 
     def get_age_for_search(self, user_id, keyboard):
         name = self.get_fullname(user_id)[0]
         self.write_message(user_id,
                            f'{name} выбери диапазон возраста из '
-                           f'предложенных или введи точный. Возраст'
-                           f'должен быть больше от 18 лет до 55.',
+                           f'предложенных, выбери свой диапазон(через пробел или дефис)'
+                           f' или введи точный. Возраст'
+                           f' должен быть больше от 18 лет до 55.',
                            keyboard=keyboard
                            )
 
@@ -151,7 +127,7 @@ class VkBot:
         self.write_message(user_id,
                            'нравится - LIKE, не нравится - DISLIKE, '
                            'NEXT - смотреть дальше, EXIT - в главное '
-                           'меню или изменить параметры поиска - ',
+                           'меню или изменить параметры',
                            keyboard=keyboard
                            )
 
@@ -172,8 +148,8 @@ class VkBot:
                            keyboard=keyboard)
 
     def check_age(self, user_id, text):
-        if int(text[:2]) < 18:
-            self.get_age_for_search(user_id, keyboards.age_choice())
+        if int(text[:2]) not in range(18, 56) or (len(text) in (3, 4) or len(text) > 5):
+            self.get_age_for_search(user_id, Keyboards.age_choice())
             return False
         else:
             self.set_parameters(user_id, text, 'hometown')
@@ -181,8 +157,7 @@ class VkBot:
 
     def set_parameters(self, user_id, text, parameter):
         self.search_parameters.setdefault(user_id, {})
-        # print(self.search_parameters.setdefault(user_id, {}))
-        if re.search(r'^[0-9]{1,3}', text):
+        if re.search(r'^[0-9]{1,2}', text):
             self.search_parameters[user_id]['age_from'] = int(text[:2])
             if len(text) == 2:
                 self.search_parameters[user_id]['age_to'] = int(text[:2]) + 1
@@ -209,8 +184,14 @@ class VkBot:
             f'START - начать новый поиск. EXIT - выход. MENU - перейти в меню',
             keyboard=keyboard)
 
-    # @classmethod
     def add_to_db_and_check_matched(self, text, user_id, founded_user_id):
+        '''
+        Добавляет пользователей в избранное и чс.
+        При добавлении в избранное проверяет на
+        совпадание пары.
+        '''
+        if founded_user_id is None:
+            return False
         if text == 'like':
             user = User.get_user(user_id)
             fav_user = FoundedUser.get_user(founded_user_id)
@@ -228,17 +209,19 @@ class VkBot:
 
     def messages_to_matched_users(self, user, matched_user):
         user_photos = FoundedUser.get_photos(user.user_id)
-        # matched_user_photos = FoundedUser.get_photos(matched_user.user_id)
         self.write_message(user.user_id, f'{matched_user.lastname} {matched_user.firstname} '
                                          f'тоже лайкнул(а) тебя. Договориться о встрече или '
                                          f'продолжить просмотр?',
-                           keyboard=keyboards.write_message_to_fav_user(matched_user.user_id))
+                           keyboard=Keyboards.write_message_to_fav_user(matched_user.user_id))
         self.write_message(matched_user.user_id, f'{user.lastname} {user.firstname} '
                                                  f'тоже лайкнул(а) тебя. Договоришься встретиться?',
-                           keyboard=keyboards.message_to_pair(user.user_id),
+                           keyboard=Keyboards.message_to_pair(user.user_id),
                            attachment=user_photos)
 
     def get_user_in_favorites(self, user_id, text, current_user=None):
+        '''
+        Выдает или удаляет пользователя из избранного.
+        '''
         if text == 'удалить' and current_user is not None:
             User.delete_from_favorites(user_id, current_user)
         if not self.favorite_users.get(user_id, False):
@@ -247,12 +230,14 @@ class VkBot:
         try:
             favorite_user = next(self.favorite_users[user_id])
             return favorite_user
-            # return [favorite_user.user_id, favorite_user.user_photos]
         except StopIteration:
             self.favorite_users[user_id] = False
             return False
 
     def get_user_in_blacklist(self, user_id, text, current_user=None):
+        '''
+        Выдает или удаляет пользователя из чс.
+        '''
         if text == 'удалить из чс' and current_user is not None:
             User.delete_from_blacklist(user_id, current_user)
         if not self.blacklist_users.get(user_id, False):
@@ -264,14 +249,3 @@ class VkBot:
         except StopIteration:
             self.blacklist_users[user_id] = False
             return False
-
-    # def get_user_photos(self):
-    #     if t
-
-
-user = VkUser()
-bot = VkBot()
-keyboards = Keyboards()
-obj = SearchParams()
-count = FoundedUsersCount()
-age_regex = r'^[0-9]{1,2}-?([0-9]{1,2})?'

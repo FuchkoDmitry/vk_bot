@@ -1,14 +1,13 @@
-import sqlalchemy
 import sqlalchemy.exc
 import contextlib
-import os
+from decouple import config
 
 '''
 создание БД Postgres. 
 '''
-db_login = os.getenv('db_login')
-db_password = os.getenv('db_password')
-db_name = os.getenv('db_name')
+db_login = config('DB_LOGIN')
+db_password = config('DB_PASSWORD')
+db_name = config('DB_NAME')
 
 if __name__ == '__main__':
     with contextlib.suppress(sqlalchemy.exc.ProgrammingError):

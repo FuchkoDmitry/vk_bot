@@ -1,46 +1,57 @@
 import re
+from vkapi.vk_api_group import VkBot
+from vkapi.vk_api_user import VkUser
+from vk_bot.keyboards import Keyboards
+from database.db_classes import SearchParams, FoundedUsersCount
 
-from bot import bot, age_regex, keyboards, obj, count, user
-from data import level_1, relation, level_2
-from db import session, City
+from vk_bot.data import level_1, relation
+from database.db_classes import session, City
 
 
-def bot_logic(users_list=None, search_params_id=None, current_user=None):
+bot = VkBot()
+user = VkUser()
+keyboards = Keyboards()
+obj = SearchParams()
+count = FoundedUsersCount()
+age_regex = r'^[0-9]{1,2}-?([0-9]{1,2})?'
+
+
+def start_bot(users_list=None, search_params_id=None, current_user=None):
+
     while True:
-        # uid, text, payload = bot.listen()
         uid, text = bot.listen()
         if text in level_1 or re.search(age_regex, text) \
                 or session.query(City).where(City.name == text).first() is not None:
             start_logic(text, uid)
-        elif text in level_2:
+        elif text in ('найти', 'next', 'like', 'dislike'):
             advanced_logic(text, uid, users_list, search_params_id, current_user)
         elif text in ('избранное', 'далее', 'удалить'):
             fav_user = bot.get_user_in_favorites(uid, text, current_user)
             if not fav_user:
                 bot.new_search(uid, keyboards.start_keyboard())
-                return bot_logic()
+                return start_bot()
             bot.show_pictures(
                 uid,
                 [fav_user.user_id, fav_user.user_photos],
                 keyboards.user_link_keyboard(fav_user.user_id)
             )
             bot.make_decision_for_favorites(uid, keyboards.work_with_fav_keyboard())
-            bot_logic(current_user=fav_user)
+            start_bot(current_user=fav_user)
 
         elif text in ('черный список', 'следующий', 'удалить из чс'):
             bl_user = bot.get_user_in_blacklist(uid, text, current_user)
             if not bl_user:
                 bot.new_search(uid, keyboards.start_keyboard())
-                return bot_logic()
+                return start_bot()
             bot.show_pictures(uid,
                               [bl_user.user_id, bl_user.user_photos],
                               keyboards.user_link_keyboard(bl_user.user_id)
                               )
             bot.make_decision_for_blacklist(uid, keyboards.work_with_bl_keyboard())
-            bot_logic(current_user=bl_user)
+            start_bot(current_user=bl_user)
 
         else:
-            bot.write_message(uid, f'{uid}, я тебя не понял попробуй еще')
+            bot.say_hello(uid, keyboards.start_keyboard())
 
 
 def start_logic(text, uid):
@@ -57,17 +68,16 @@ def start_logic(text, uid):
     elif session.query(City).where(City.name == text).first() is not None:
         bot.set_parameters(uid, text, 'hometown')
         bot.show_parameters(uid, keyboards.before_searching_keyboard())
-    elif text in ('start', 'изменить параметры поиска'):
+    elif text in ('start', 'изменить параметры'):
         bot.gender_choice(uid, keyboards.gender_keyboard())
     elif text == 'exit':
         bot.say_bye(uid, keyboards.exit_keyboard())
-        # count.clear_count(uid)
     elif text == 'menu':
         bot.show_menu(uid, keyboards.menu_keyboard())
-    elif text == 'просмотреть параметры поиска':
+    elif text == 'просмотр параметров':
         bot.show_parameters(uid, keyboards.before_searching_keyboard())
     else:
-        bot.write_message(uid, f'{uid}, я тебя не понял попробуй еще')
+        bot.write_message(uid, 'я тебя не понял попробуй еще')
 
 
 def advanced_logic(text, uid, users_list, search_params_id, current_user):
@@ -77,37 +87,25 @@ def advanced_logic(text, uid, users_list, search_params_id, current_user):
         bot.founded_users[uid] = user.find_users(uid, search_params_id, offset=offset, **bot.search_parameters[uid])
         if not bot.founded_users[uid]:
             bot.new_search(uid, keyboards.new_search_keyboard())
-            return bot_logic()
+            return start_bot()
+    is_matched = bot.add_to_db_and_check_matched(text, uid, current_user)
+    if is_matched:
+        bot.messages_to_matched_users(is_matched[0], is_matched[1])
+        start_bot(bot.founded_users[uid], search_params_id, current_user)
+    try:
         user_photos = user.get_photos_for_founded_user(bot.founded_users[uid].pop(0))
+    except IndexError:
+        offset = count.check_count(uid, search_params_id)
+        bot.founded_users[uid] = user.find_users(uid, search_params_id, offset=offset, **bot.search_parameters[uid])
+        if not bot.founded_users[uid]:
+            count.clear_count(uid)
+            bot.new_search(uid, keyboards.new_search_keyboard())
+            return start_bot()
+        user_photos = user.get_photos_for_founded_user(bot.founded_users[uid].pop(0))
+    except KeyError:
+        bot.show_menu(uid, keyboards.menu_keyboard())
+        return start_bot()
+    finally:
         bot.show_pictures(uid, user_photos, keyboards.user_link_keyboard(user_photos[0]))
         bot.make_decision(uid, keyboards.decision_keyboard())
-        return bot_logic(bot.founded_users[uid], search_params_id, user_photos[0])
-    elif text in ('like', 'dislike', 'next'):
-        is_matched = bot.add_to_db_and_check_matched(text, uid, current_user)
-        print(is_matched, 'is_matched')
-        if is_matched:
-            bot.messages_to_matched_users(is_matched[0], is_matched[1])
-            bot_logic(bot.founded_users[uid], search_params_id, current_user)
-        try:
-            user_photos = user.get_photos_for_founded_user(bot.founded_users[uid].pop(0))
-            bot.show_pictures(uid, user_photos, keyboards.user_link_keyboard(user_photos[0]))
-            bot.make_decision(uid, keyboards.decision_keyboard())
-            # print('bot.founded_users[uid]', bot.founded_users[uid])
-        except IndexError:
-            offset = count.check_count(uid, search_params_id)
-            bot.founded_users[uid] = user.find_users(uid, search_params_id, offset=offset, **bot.search_parameters[uid])
-            if not bot.founded_users[uid]:
-                count.clear_count(uid)
-                bot.new_search(uid, keyboards.new_search_keyboard())
-                return bot_logic()
-            user_photos = user.get_photos_for_founded_user(bot.founded_users[uid].pop(0))
-            bot.show_pictures(uid, user_photos, keyboards.user_link_keyboard(user_photos[0]))
-            bot.make_decision(uid, keyboards.decision_keyboard())
-
-        finally:
-            return bot_logic(bot.founded_users[uid], search_params_id, user_photos[0])
-
-
-if __name__ == '__main__':
-    bot_logic()
-
+        return start_bot(bot.founded_users[uid], search_params_id, user_photos[0])
