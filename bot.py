@@ -221,18 +221,22 @@ class VkBot:
             User.add_favorite(user_id, founded_user_id)
             fav_user = User.get_user(founded_user_id)
             if fav_user:
+                user = FoundedUser.get_user(user_id)
                 return User.is_matched(user, fav_user)
         elif text == 'dislike':
             User.add_to_blacklist(user_id, founded_user_id)
 
     def messages_to_matched_users(self, user, matched_user):
+        user_photos = FoundedUser.get_photos(user.user_id)
+        # matched_user_photos = FoundedUser.get_photos(matched_user.user_id)
         self.write_message(user.user_id, f'{matched_user.lastname} {matched_user.firstname} '
                                          f'тоже лайкнул(а) тебя. Договориться о встрече или '
                                          f'продолжить просмотр?',
                            keyboard=keyboards.write_message_to_fav_user(matched_user.user_id))
         self.write_message(matched_user.user_id, f'{user.lastname} {user.firstname} '
-                                                 f'тоже лайкнул тебя. Договоришься встретиться?',
-                           keyboard=keyboards.message_to_pair(user.user_id))
+                                                 f'тоже лайкнул(а) тебя. Договоришься встретиться?',
+                           keyboard=keyboards.message_to_pair(user.user_id),
+                           attachment=user_photos)
 
     def get_user_in_favorites(self, user_id, text, current_user=None):
         if text == 'удалить' and current_user is not None:
@@ -260,6 +264,9 @@ class VkBot:
         except StopIteration:
             self.blacklist_users[user_id] = False
             return False
+
+    # def get_user_photos(self):
+    #     if t
 
 
 user = VkUser()

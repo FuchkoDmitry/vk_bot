@@ -142,6 +142,11 @@ class FoundedUser(Base):
         session.add(new_user)
         session.commit()
 
+    @classmethod
+    def get_photos(cls, user_id):
+        user = cls.get_user(user_id)
+        return user.user_photos
+
 
 class SearchParams(Base):
 
@@ -233,6 +238,10 @@ class City(Base):
 
 Base.metadata.create_all(engine)
 
+# User.add_favorite(123398, 1136869)
+# a = session.query(User).all()
+# for u in a:
+#     print(u.favorites)
 # print(FoundedUser.get_user(211974) in User.get_user(1136869).blacklisted)
 # print(True in User.get_user(1136869).blacklisted)
 # fav = session.query(User).where(User.user_id==1136869).first()
@@ -248,8 +257,13 @@ Base.metadata.create_all(engine)
 # print(211975 in [user.user_id for user in fav.blacklisted])
 # for user in fav.blacklisted:
 #     print(user.user_id)
-# user_to_del = fav.favorites[0]
+# user_to_del = session.query(FoundedUser).where(FoundedUser.user_id==123398).first()
+# User.delete_from_favorites(1136869, user_to_del)
+
+# print(user_to_del.firstname, user_to_del.lastname)
 # fav.favorites.remove(user_to_del)
+# for user in fav.favorites:
+#     print(user.lastname, user.firstname)
 # print(fav.favorites)
 # iterator = iter(fav.favorites)
 # print(getsizeof(iterator))
