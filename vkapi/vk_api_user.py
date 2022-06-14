@@ -31,7 +31,7 @@ class VkUser:
                     FoundedUser.get_user(user['id']) in User.get_user(user_id).blacklisted:
                 continue
             users_list.append(user['id'])
-        FoundedUsersCount.update_count(params_id, count)
+        FoundedUsersCount.update_count(user_id, params_id, count)
         if len(users_list):
             return users_list
         return False

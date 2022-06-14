@@ -155,19 +155,21 @@ class SearchParams(Base):
     search_parameters = sq.Column(sq.Text)
     user = relationship(User)
 
-    def add_search_params(self, user_id, params):
-        request = session.query(SearchParams).where(and_(
-            SearchParams.user_id == user_id,
-            SearchParams.search_parameters == params)
+    @classmethod
+    def add_search_params(cls, user_id, params):
+        get_params = session.query(cls).where(and_(
+            cls.user_id == user_id,
+            cls.search_parameters == params)
         ).first()
-        if request is None:
-            self.user_id = user_id
-            self.search_parameters = params
-            session.add(self)
+
+        if get_params is None:
+            new_params = cls(user_id=user_id,
+                             search_parameters=params)
+            session.add(new_params)
             session.commit()
-            return self.id
+            return new_params.id
         else:
-            return request.id
+            return get_params.id
 
 
 class FoundedUsersCount(Base):
@@ -181,26 +183,29 @@ class FoundedUsersCount(Base):
     user_id = sq.Column(sq.Integer)
     founded_users_count = sq.Column(sq.Integer)
 
-    def check_count(self, user_id, search_params_id):
-        request = session.query(FoundedUsersCount).where(and_(
-            FoundedUsersCount.user_id == user_id,
-            FoundedUsersCount.searching_parameters_id == search_params_id)
+    @classmethod
+    def check_count(cls, user_id, search_params_id):
+        count = session.query(cls).where(and_(
+            cls.user_id == user_id,
+            cls.searching_parameters_id == search_params_id)
         ).first()
-        if request is None:
-            self.user_id = user_id
-            self.searching_parameters_id = search_params_id
-            self.founded_users_count = 0
-            session.add(self)
+        if count is None:
+            new_count = cls(user_id=user_id,
+                            searching_parameters_id=search_params_id,
+                            founded_users_count=0
+                            )
+            session.add(new_count)
             session.commit()
-            return self.founded_users_count
+            return new_count.founded_users_count
         else:
-            return request.founded_users_count
+            return count.founded_users_count
 
     @classmethod
-    def update_count(cls, search_params_id, count_to_add):
-        current_count = session.query(cls).where(
-            cls.searching_parameters_id == search_params_id
-        ).first().founded_users_count
+    def update_count(cls, user_id, search_params_id, count_to_add):
+        current_count = session.query(cls).where(and_(
+            cls.searching_parameters_id == search_params_id,
+            cls.user_id == user_id
+        )).first().founded_users_count
         session.query(cls).filter(
             cls.searching_parameters_id == search_params_id).update(
             {'founded_users_count': count_to_add + current_count}
@@ -208,15 +213,15 @@ class FoundedUsersCount(Base):
         session.commit()
 
     @classmethod
-    def clear_count(cls, user_id):
-        searching_params = session.query(cls).where(
-            cls.user_id == user_id
-        ).all()
+    def clear_count(cls, user_id, search_params_id):
+        searching_params = session.query(cls).where(and_(
+            cls.user_id == user_id,
+            cls.searching_parameters_id == search_params_id)
+        ).first()
         if searching_params:
-            for searching_param in searching_params:
-                searching_param.founded_users_count = 0
-                session.add(searching_param)
-                session.commit()
+            searching_params.founded_users_count = 0
+            session.add(searching_params)
+            session.commit()
 
 
 class City(Base):

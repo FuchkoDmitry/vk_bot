@@ -81,31 +81,19 @@ def start_logic(text, uid):
 
 
 def advanced_logic(text, uid, users_list, search_params_id, current_user):
-    if text == 'найти':
+    if text == 'найти' or len(bot.founded_users.get(uid, [])) == 0:
         search_params_id = obj.add_search_params(user_id=uid, params=str(bot.search_parameters.setdefault(uid, {})))
         offset = count.check_count(uid, search_params_id)
         bot.founded_users[uid] = user.find_users(uid, search_params_id, offset=offset, **bot.search_parameters[uid])
         if not bot.founded_users[uid]:
+            count.clear_count(uid, search_params_id)
             bot.new_search(uid, keyboards.new_search_keyboard())
             return start_bot()
     is_matched = bot.add_to_db_and_check_matched(text, uid, current_user)
     if is_matched:
         bot.messages_to_matched_users(is_matched[0], is_matched[1])
         start_bot(bot.founded_users[uid], search_params_id, current_user)
-    try:
-        user_photos = user.get_photos_for_founded_user(bot.founded_users[uid].pop(0))
-    except IndexError:
-        offset = count.check_count(uid, search_params_id)
-        bot.founded_users[uid] = user.find_users(uid, search_params_id, offset=offset, **bot.search_parameters[uid])
-        if not bot.founded_users[uid]:
-            count.clear_count(uid)
-            bot.new_search(uid, keyboards.new_search_keyboard())
-            return start_bot()
-        user_photos = user.get_photos_for_founded_user(bot.founded_users[uid].pop(0))
-    except KeyError:
-        bot.show_menu(uid, keyboards.menu_keyboard())
-        return start_bot()
-    finally:
-        bot.show_pictures(uid, user_photos, keyboards.user_link_keyboard(user_photos[0]))
-        bot.make_decision(uid, keyboards.decision_keyboard())
-        return start_bot(bot.founded_users[uid], search_params_id, user_photos[0])
+    user_photos = user.get_photos_for_founded_user(bot.founded_users[uid].pop(0))
+    bot.show_pictures(uid, user_photos, keyboards.user_link_keyboard(user_photos[0]))
+    bot.make_decision(uid, keyboards.decision_keyboard())
+    return start_bot(bot.founded_users[uid], search_params_id, user_photos[0])
