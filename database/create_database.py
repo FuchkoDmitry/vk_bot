@@ -5,7 +5,7 @@ from decouple import config
 '''
 создание БД Postgres. 
 '''
-db_login = config('DB_LOGIN')
+db_login = config('DB_USER')
 db_password = config('DB_PASSWORD')
 db_name = config('DB_NAME')
 

@@ -6,7 +6,7 @@ from sqlalchemy import and_
 from decouple import config
 
 Base = declarative_base()
-db_login = config('DB_LOGIN')
+db_login = config('DB_USER')
 db_password = config('DB_PASSWORD')
 db_name = config('DB_NAME')
 
